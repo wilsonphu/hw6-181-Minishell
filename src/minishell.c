@@ -6,27 +6,30 @@
 
 #define MAX_PATH 4096
 #define MAX_INPUT 4096
+#define BRIGHTBLUE "\x1b[34;1m"
+#define DEFAULT    "\x1b[0m"
+
+
 
 int main(void){
 	char cwd[MAX_PATH];
 	char input[MAX_PATH];
 
 	while (1) {
-        getcwd(cwd, sizeof(cwd));
-        printf("[%s]$ ", cwd);
-        fflush(stdout);
+        	getcwd(cwd, sizeof(cwd));
+        	printf("[%s]$ ", cwd);
+        	fflush(stdout);
 
-	if (fgets(input, sizeof(input), stdin) == NULL) {
-            break;
-        }
-	input[strcspn(input, "\n")] = '\0';
-	if (strcmp(input, "exit") == 0) {
-            break;
-        }
-
-
-	input[strcspn(input, "\n")] = '\0';
-    }
-	return 0;
+		if (fgets(input, sizeof(input), stdin) == NULL) {
+            		break;
+        	}
+		input[strcspn(input, "\n")] = '\0';
+		if (strcmp(input, "exit") == 0) {
+            		break;
+        	}	
+	
+   	}
+	
+	return EXIT_SUCCESS;
 
 } 
