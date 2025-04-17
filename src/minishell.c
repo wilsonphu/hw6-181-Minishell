@@ -19,6 +19,11 @@ int main(void){
 	if (fgets(input, sizeof(input), stdin) == NULL) {
             break;
         }
+	input[strcspn(input, "\n")] = '\0';
+	if (strcmp(input, "exit") == 0) {
+            break;
+        }
+
 
 	input[strcspn(input, "\n")] = '\0';
     }
