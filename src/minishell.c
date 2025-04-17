@@ -11,3 +11,17 @@ int main(void){
 	char cwd[MAX_PATH];
 	char input[MAX_PATH];
 
+	while (1) {
+        getcwd(cwd, sizeof(cwd));
+        printf("[%s]$ ", cwd);
+        fflush(stdout);
+
+	if (fgets(input, sizeof(input), stdin) == NULL) {
+            break;
+        }
+
+	input[strcspn(input, "\n")] = '\0';
+    }
+	return 0;
+
+} 
