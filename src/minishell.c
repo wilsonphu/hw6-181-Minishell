@@ -41,7 +41,7 @@ int main(void){
 			}
 		        struct passwd *pw = getpwuid(getuid());
                   	if (pw == NULL) {
-                        	perror("getpwuid");
+                        	fprintf(stderr, "Error: Cannot get passwd entry. %s.\n", strerror(errno));
                           	continue;
                   	}	
             		const char *home = pw->pw_dir;
@@ -50,8 +50,10 @@ int main(void){
             		if (*arg == '\0' || strcmp(arg, "~") == 0) {
                 	// cd or cd ~
                 		if (home && chdir(home)!= 0){ 
-					perror("cd");
-					continue;
+					
+    					fprintf(stderr, "Error: Cannot change directory to '%s'. %s.\n", home, strerror(errno));
+    					continue;
+		
 				}
             		}	 
 			else if (arg[0] == '~') {
@@ -62,13 +64,13 @@ int main(void){
                 		}
 
 				if (chdir(path) != 0) {
-            				perror("cd");
+            				fprintf(stderr, "Error: Cannot change directory to '%s'. %s.\n", home, strerror(errno));
 					continue;
         			}	
             		} else {
                 		// cd somedir
                 		if (chdir(arg) != 0) {
-                    			perror("cd");	
+                    			fprintf(stderr, "Error: Cannot change directory to '%s'. %s.\n", home, strerror(errno));
 					continue;
                 		}
             		}
@@ -89,8 +91,7 @@ int main(void){
 			int status;
 			waitpid (pid, &status, 0);
 		} else {
-
-
+			fprintf("Error: fork() failed. %s.\n", home, strerror(errno));
    		}
 		continue;
 	}	
