@@ -17,7 +17,8 @@ int main(void){
 
 	while (1) {
         	getcwd(cwd, sizeof(cwd));
-        	printf("[%s]$ ", cwd);
+        	//printf("[%s]$ ", cwd);
+		printf("[%s%s%s]$ ", BRIGHTBLUE, cwd, DEFAULT);
         	fflush(stdout);
 		
 		// read input 
