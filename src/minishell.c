@@ -72,6 +72,25 @@ int main(void){
 					continue;
                 		}
             		}
+			char *args[2048];
+			int i = 0;
+			char *token = strtok(input, " ");
+			while (token != NULL && i < 2047) {
+            		args[i++] = token;
+            		token = strtok(NULL, " ");
+        	}	
+        	args[i] = NULL;
+		pid_t pid = fork();
+
+		if (pid == 0){
+			execvp(args[0], args);
+			exit(EXIT_FAILURE);
+		} else if (pid>0) {
+			int status;
+			waitpid (pid, &status, 0);
+		} else {
+
+
    		}
 		continue;
 	}	
