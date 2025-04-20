@@ -5,7 +5,9 @@
 #include <errno.h>     
 #include <pwd.h>
 #include <sys/types.h>
-#include <sys/wait.h> 
+#include <sys/wait.h>
+#include <signal.h>
+#include <unistd.h> 
 
 #define MAX_PATH 4096
 #define MAX_INPUT 4096
@@ -13,8 +15,22 @@
 #define BRIGHTBLUE "\x1b[34;1m"
 #define DEFAULT    "\x1b[0m"
 
+volatile sig_atomic_t interrupted = 0;
+
+void handle_sigint(int sig) {
+    (void)sig;  
+    interrupted = 1;
+    write(STDOUT_FILENO, "\n", 1);
+}
 
 int main(void){
+
+	struct sigaction sa;
+	sa.sa_handler = handle_sigint;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+	sigaction(SIGINT, &sa, NULL);
+
 	char cwd[MAX_PATH];
 	char input[MAX_PATH];
 
@@ -30,6 +46,14 @@ int main(void){
 		
 		// read input 
 		if (fgets(input, sizeof(input), stdin) == NULL) {
+			if (interrupted) {
+            			interrupted = 0;
+            			clearerr(stdin);  
+            			continue;
+        		}
+			if (feof(stdin)){
+				break;
+			}
 			fprintf(stderr, "Error: Failed to read from stdin. %s.\n", strerror(errno));
             		exit(EXIT_FAILURE);
         	}
@@ -101,7 +125,6 @@ int main(void){
 			int status;
 			if (waitpid(pid, &status, 0) == -1) {
 				fprintf(stderr,"Error: wait() failed. %s.\n", strerror(errno));
-				exit(EXIT_FAILURE);
 			}	
 		} else {
 			fprintf(stderr,"Error: fork() failed. %s.\n",strerror(errno));
