@@ -12,6 +12,7 @@
 #define MAX_PATH 4096
 #define MAX_INPUT 4096
 #define MAX_TOKEN 2048
+#define MAX_PROCESSES 64
 #define BRIGHTBLUE "\x1b[34;1m"
 #define DEFAULT    "\x1b[0m"
 
@@ -78,74 +79,92 @@ int main(void){
 		**/
 
 		char *args[MAX_TOKEN];
+		char *cmd[MAX_PROCESSES][MAX_TOKEN];
                 int i = 0;
+		int j = 0;
+		int k = 0;
+		int numProcesses = 0;
+		
 		char *ptr = input;
 
 		while (*ptr && i<MAX_TOKEN-1){
 			while (*ptr == ' '){
 			       	ptr++;
 				}
+			if (*ptr == '\0' || *ptr == '\n') {
+				break;
+				}	
+			if (*ptr == '|'){
+				cmd[j][k] = NULL;
+				j+=1;
+				k=0;
+				ptr++;
+				continue;
+			}
 			if (*ptr == '"'){
 				ptr++;
 				char *start = ptr;
 				while (*ptr && *ptr != '"'){
 					ptr ++;
 				}
-
-
 				if (*ptr != '"'){
 					fprintf(stderr, "Error:unmatched quote in path.\n");
 					exit(EXIT_FAILURE);
 			 	}		
 				
 				*ptr = '\0';
+				cmd[j][k] = start;
 				args[i++] = start;
+				k+=1;
 				ptr++;
 
-			} else {
+			} else {	
 				char *start = ptr;
-				while (*ptr && *ptr != ' '){
+				while (*ptr && *ptr != ' ' && *ptr != '|' && *ptr != '\n'){
 					ptr++;
 				}
-
-				if (*ptr) *ptr++ = '\0';
-				args[i++] = start;
-			}
-		}
-
 				
-
+				if (*ptr) *ptr++ = '\0';
+				cmd[j][k] = start;
+				args[i++] = start;
+				k+=1;
+			}
+			
+		}
+		cmd[j][k] = NULL;
 		args[i] = NULL;
+		numProcesses = j+1;
 		if (i == 0) continue;  
 		// cd 
-		if (args[0] && strcmp(args[0], "cd") == 0) {
+
+		if (args[0] && strcmp(args[0], "cd")  == 0) {
 			if (i > 2) {
         			fprintf(stderr, "Error: Too many arguments to cd.\n");
         			exit(EXIT_FAILURE);
     			}
 
-		        struct passwd *pw = getpwuid(getuid());
-                  	if (pw == NULL) {
-                        	fprintf(stderr, "Error: Cannot get passwd entry. %s.\n", strerror(errno));
-                          	exit(EXIT_FAILURE);
-                  	}
+	        	struct passwd *pw = getpwuid(getuid());
+              		if (pw == NULL) {
+                       		fprintf(stderr, "Error: Cannot get passwd entry. %s.\n", strerror(errno));
+                       		exit(EXIT_FAILURE);
+               		}
 	
-            		const char *home = pw->pw_dir;
-            		char path[MAX_PATH];
+  	      		const char *home = pw->pw_dir;
+      	    		char path[MAX_PATH];
 
-            		if (args[1] == NULL || strcmp(args[1], "~") == 0) {
+           		if (args[1] == NULL || strcmp(args[1], "~") == 0) {
                 	// cd or cd ~
                 		if (home && chdir(home)!= 0){ 
     					fprintf(stderr, "Error: Cannot change directory to '%s'. %s.\n", home, strerror(errno));
 					exit(EXIT_FAILURE);
 				}
-            		}	 
+            		}	
 			else if (args[1][0] == '~') {
 				if (args[1][1]  == '/' || args[1][1]  == '\0'){
                 			snprintf(path, sizeof(path), "%s%s", home, args[1] + 1);
 				} else {
-                			snprintf(path, sizeof(path), "%s/%s", home, args[1] + 1);
-                		}
+               				snprintf(path, sizeof(path), "%s/%s", home, args[1] + 1);
+               			}
 
 				if (chdir(path) != 0) {
             				fprintf(stderr, "Error: Cannot change directory to '%s'. %s.\n", path, strerror(errno));
@@ -153,30 +172,61 @@ int main(void){
         			}	
             		} else {
                 		// cd somedir
-                		if (chdir(args[1]) != 0) {
-                    			fprintf(stderr, "Error: Cannot change directory to '%s'. %s.\n", args[1], strerror(errno));
-					exit(EXIT_FAILURE);
-                		}
+               			if (chdir(args[1]) != 0) {
+               				fprintf(stderr, "Error: Cannot change directory to '%s'. %s.\n", args[1], strerror(errno));
+					exit(EXIT_FAILURE);        
+        			}
             		}
-			continue;
-		}
+				continue;
 		
-		pid_t pid = fork();
+		}
+		else {
+			int pipes[MAX_PROCESSES-1][2];
+			for (int i = 0; i < numProcesses - 1; i++) {
+				if (pipe(pipes[i]) == -1){
+					fprintf(stderr,"Error: pipe() failed. %s.\n", strerror(errno));
+					exit(EXIT_FAILURE);
+				}	
+			}
+			for (int i = 0; i < numProcesses; i++){		
+				pid_t pid = fork();
 
-		if (pid == 0){
-			execvp(args[0], args);
-			fprintf(stderr,"Error: exec() failed. %s.\n", strerror(errno));
-			exit(EXIT_FAILURE);
-		} else if (pid>0) {
-			int status;
-			if (waitpid(pid, &status, 0) == -1) {
-				fprintf(stderr,"Error: wait() failed. %s.\n", strerror(errno));
-			}	
-		} else {
-			fprintf(stderr,"Error: fork() failed. %s.\n",strerror(errno));
+				if (pid == 0){
+		
+					if (i > 0) {
+            					dup2(pipes[i - 1][0], STDIN_FILENO);
+        				}
+					if (i < numProcesses - 1) {
+            					dup2(pipes[i][1], STDOUT_FILENO);
+       					}
+					for (int j = 0; j < numProcesses - 1; j++) {
+            					close(pipes[j][0]);
+            					close(pipes[j][1]);
+        				}
+            			
+					execvp(cmd[i][0], cmd[i]);
 			
-   		}		
-	}	
+					fprintf(stderr,"Error: exec() failed. %s.\n", strerror(errno));
+					exit(EXIT_FAILURE);
+				} else if (pid < 0) {	
+					fprintf(stderr,"Error: fork() failed. %s.\n",strerror(errno));
+					exit(EXIT_FAILURE);
+	   			}		
+			}	
+			for (int i = 0; i < numProcesses - 1; i++) {
+    				close(pipes[i][0]);
+    				close(pipes[i][1]);
+			}
+			for (int i = 0; i < numProcesses; i++) {
+    				int status;
+    				if (waitpid(-1, &status, 0) == -1) {
+        				fprintf(stderr, "Error: wait() failed. %s.\n", strerror(errno));
+     					exit(EXIT_FAILURE);
+    				}
+			}
+		}
+
+	}
 	return EXIT_SUCCESS;
 
 } 
