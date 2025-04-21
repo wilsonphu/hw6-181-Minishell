@@ -29,7 +29,10 @@ int main(void){
 	sa.sa_handler = handle_sigint;
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = 0;
-	sigaction(SIGINT, &sa, NULL);
+	if (sigaction(SIGINT, &sa, NULL) == -1) { 
+        	fprintf(stderr, "Error: Cannot register signal handler. %s.\n", strerror(errno));
+        	exit(EXIT_FAILURE);
+    	}
 
 	char cwd[MAX_PATH];
 	char input[MAX_PATH];
@@ -71,8 +74,9 @@ int main(void){
                         token = strtok(NULL, " ");
                 }
                 args[i] = NULL;
+		if (i == 0) continue;  
 		// cd 
-		if (strncmp(input, "cd", 2) == 0 && (input[2] == '\0' || input[2] == ' ')) {
+		if (args[0] && strcmp(args[0], "cd") == 0) {
 			if (i > 2) {
         			fprintf(stderr, "Error: Too many arguments to cd.\n");
         			exit(EXIT_FAILURE);
@@ -128,9 +132,8 @@ int main(void){
 			}	
 		} else {
 			fprintf(stderr,"Error: fork() failed. %s.\n",strerror(errno));
-			exit(EXIT_FAILURE);
+			
    		}		
-		continue;
 	}	
 	return EXIT_SUCCESS;
 
