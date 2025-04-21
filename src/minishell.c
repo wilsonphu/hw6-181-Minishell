@@ -1,7 +1,7 @@
-#include <stdio.h>      // printf, perror, fgets
-#include <stdlib.h>     // exit
-#include <unistd.h>     // getcwd
-#include <string.h>     // strerror, strcspn
+#include <stdio.h>      
+#include <stdlib.h>     
+#include <unistd.h>     
+#include <string.h>     
 #include <errno.h>     
 #include <pwd.h>
 #include <sys/types.h>
@@ -66,6 +66,7 @@ int main(void){
 		if (strcmp(input, "exit") == 0) { 
             		break;
         	}	
+		/**
 		char *args[MAX_TOKEN];
               	int i = 0;
                 char *token = strtok(input, " ");
@@ -74,6 +75,47 @@ int main(void){
                         token = strtok(NULL, " ");
                 }
                 args[i] = NULL;
+		**/
+
+		char *args[MAX_TOKEN];
+                int i = 0;
+		char *ptr = input;
+
+		while (*ptr && i<MAX_TOKEN-1){
+			while (*ptr == ' '){
+			       	ptr++;
+				}
+			if (*ptr == '"'){
+				ptr++;
+				char *start = ptr;
+				while (*ptr && *ptr != '"'){
+					ptr ++;
+				}
+
+
+				if (*ptr != '"'){
+					fprintf(stderr, "Error:unmatched quote in path.\n");
+					exit(EXIT_FAILURE);
+			 	}		
+				
+				*ptr = '\0';
+				args[i++] = start;
+				ptr++;
+
+			} else {
+				char *start = ptr;
+				while (*ptr && *ptr != ' '){
+					ptr++;
+				}
+
+				if (*ptr) *ptr++ = '\0';
+				args[i++] = start;
+			}
+		}
+
+				
+
+		args[i] = NULL;
 		if (i == 0) continue;  
 		// cd 
 		if (args[0] && strcmp(args[0], "cd") == 0) {
