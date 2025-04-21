@@ -211,7 +211,14 @@ int main(void){
 				} else if (pid < 0) {	
 					fprintf(stderr,"Error: fork() failed. %s.\n",strerror(errno));
 					exit(EXIT_FAILURE);
-	   			}		
+	   			} else {
+					int status;
+					if (waitpid(pid, &status, 0) == -1) {
+                	                        fprintf(stderr, "Error: wait() failed. %s.\n", strerror(errno));
+                       		                exit(EXIT_FAILURE);
+                                	}
+
+				}	
 			}	
 			for (int i = 0; i < numProcesses - 1; i++) {
     				close(pipes[i][0]);
