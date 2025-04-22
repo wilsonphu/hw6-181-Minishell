@@ -229,13 +229,15 @@ int main(void){
 
 	   		//wait for children
 			for (int i = 0; i < numProcesses; i++) {
-    				int status;
-				if (errno == EINTR) {
-					i--;
-					continue;
-				}
 
-    				if (waitpid(pids[i], &status, 0) == -1) {
+    				int status;
+				pid_t ret;
+				do{
+					ret = waitpid(pids[i], &status, 0);
+			       	} while (ret == -1 && errno == EINTR);
+			
+
+    				if (ret == -1){
         				fprintf(stderr, "Error: wait() failed. %s.\n", strerror(errno));
      					exit(EXIT_FAILURE);
     				}
