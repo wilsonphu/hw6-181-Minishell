@@ -182,6 +182,8 @@ int main(void){
 		}
 		else {
 			int pipes[MAX_PROCESSES-1][2];
+			pid_t pids[MAX_PROCESSES];
+
 			for (int i = 0; i < numProcesses - 1; i++) {
 				if (pipe(pipes[i]) == -1){
 					fprintf(stderr,"Error: pipe() failed. %s.\n", strerror(errno));
@@ -202,35 +204,43 @@ int main(void){
 					for (int j = 0; j < numProcesses - 1; j++) {
             					close(pipes[j][0]);
             					close(pipes[j][1]);
-        				}
+       				}
+					// If command is 'ls', inject '--ignore=*.o'
+					if (strcmp(cmd[i][0], "ls") == 0) {
+   					static char *filtered_ls_args[] = {"ls", "--ignore=*.o", NULL};
+    					execvp("ls", filtered_ls_args);
+					} else {
+    					execvp(cmd[i][0], cmd[i]);
+					}		
             			
-					execvp(cmd[i][0], cmd[i]);
+					//execvp(cmd[i][0], cmd[i]);
 			
 					fprintf(stderr,"Error: exec() failed. %s.\n", strerror(errno));
 					exit(EXIT_FAILURE);
 				} else if (pid < 0) {	
 					fprintf(stderr,"Error: fork() failed. %s.\n",strerror(errno));
 					exit(EXIT_FAILURE);
-	   			} else {
-					int status;
-					if (waitpid(pid, &status, 0) == -1) {
-                	                        fprintf(stderr, "Error: wait() failed. %s.\n", strerror(errno));
-                       		                exit(EXIT_FAILURE);
-                                	}
-
-				}	
-			}	
-			for (int i = 0; i < numProcesses - 1; i++) {
-    				close(pipes[i][0]);
-    				close(pipes[i][1]);
+				}
 			}
+			for (int i = 0; i < numProcesses - 1; i++) {
+                                close(pipes[i][0]);
+                                close(pipes[i][1]);
+                        }
+
+	   		//wait for children
 			for (int i = 0; i < numProcesses; i++) {
     				int status;
-    				if (waitpid(-1, &status, 0) == -1) {
+				if (errno == EINTR) {
+					i--;
+					continue;
+				}
+
+    				if (waitpid(pids[i], &status, 0) == -1) {
         				fprintf(stderr, "Error: wait() failed. %s.\n", strerror(errno));
      					exit(EXIT_FAILURE);
     				}
 			}
+		
 		}
 
 	}
